@@ -1,0 +1,21 @@
+#usr-container {
+    min-width: 256px;
+    width: 30%;
+}
+
+#usr-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+#content-frame {
+    width: 70%;
+    min-height: 256px;
+    height: 80vh;
+}
+
+body {
+    display: flex;
+    padding: 10px;
+}
