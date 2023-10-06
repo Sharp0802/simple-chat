@@ -12,7 +12,8 @@ __all__ = [
     'Id',
     'get_by_id',
     'list_all',
-    'is_used_by'
+    'is_used_by',
+    'announce'
 ]
 
 ### TYPES ###
@@ -34,10 +35,11 @@ class UserInfo:
 
 usr: Session = -1
 usrs: Dict[Session, UserInfo] = {}
+announce = None
 
 ### CONSTS ###
 
-RCVTIMEO = 0.2
+RCVTIMEO = 5
 
 ### ROUTING ###
 
@@ -48,6 +50,18 @@ async def get_usr():
     gc_usr()
     datas = [{ "name": dat.name, "id": dat.id } for _, dat in usrs.items() if dat.alive]
     return { "datas": datas }
+
+@app.get("/usr/{id}")
+async def query_usr(id: int, response: Response):
+    global usr, usrs
+
+    gc_usr()
+    datas = [dat.name for _, dat in usrs.items() if dat.id == id]
+    if len(datas):
+        return { "name": datas[0] }
+    
+    response.status_code = status.HTTP_404_NOT_FOUND
+    return
 
 @app.post("/usr", status_code=status.HTTP_201_CREATED)
 async def new_usr(info: UserCreation):
@@ -78,8 +92,9 @@ def gc_usr() -> None:
         delta: timedelta = datetime.now() - dat.last_accessed
         if (delta.total_seconds() > RCVTIMEO):
             usrs[usr].alive = False
+            announce(f"{usrs[usr].name} leave the room")
     
-    usrs = { session: data for session, data in usrs.items() if data.alive }
+    # usrs = { session: data for session, data in usrs.items() if data.alive }
 
 def get_by_id(id: int) -> Union[UserInfo, None]:
     gc_usr()

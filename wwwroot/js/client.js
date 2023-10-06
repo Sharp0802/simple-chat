@@ -1,7 +1,5 @@
 'use strict';
 
-console.log("hello!")
-
 const request = {
     get: (url) => fetch(url, {
         headers: {
@@ -41,65 +39,113 @@ const request = {
     })
 };
 
-const myName = prompt("What's your name?", "Harry Potter");
-
 let mySession = -1
 let myId = -1
-request
-    .post("/usr", { "name": myName })
-    .then(data => data.json())
-    .then(data => {
-        mySession = data.session;
-        myId = data.id;
-        console.log(`session: ${mySession}, id: ${myId}`)
-    });
 
+const UsersDOM = document.getElementById('usr-list');
+const ChatDOM = document.getElementById('chat-box');
 
-let usrsDOM = document.getElementById('usr-list');
-let gameDOM = document.getElementById('game-box');
-let inputDOM = document.getElementById('in-box');
-let submitDOM = document.getElementById('in-submit');
+const InputDOM = document.getElementById('in-value');
+const SubmitDOM = document.getElementById('in-submit');
 
 let lastUpdated = 0;
 
-async function UpdateUserList() {
-    await request
-        .get("/usr")
-        .then(res => res.json())
-        .then(res => {
-            usrsDOM.replaceChildren();
-            for (const data of res.datas) {
+SubmitDOM.addEventListener("click", () => {
+    request.post("/chat", {
+        "session": mySession,
+        "user": myId,
+        "msg": InputDOM.value
+    }).then(() => {
+        InputDOM.value = "";
+    });
+});
+
+const Updator = {
+    Self: async () => {
+        await request.put(`/usr/${mySession}`);
+    },
+    UserList: async () => {
+        await request
+            .get("/usr")
+            .then(res => res.json())
+            .then(res => {
+                UsersDOM.replaceChildren();
+                for (const data of res.datas) {
+                    let li = document.createElement("li");
+                    if (myId == data.id) {
+                        let b = document.createElement("b");
+                        b.textContent = data.name;
+                        li.appendChild(b);
+                    }
+                    else {
+                        li.textContent = data.name;
+                    }
+                    UsersDOM.appendChild(li);
+                }
+            })
+            .catch(_ => {
+                let b = document.createElement("b");
+                b.textContent = "couldn't fetch users";
+                UsersDOM.replaceChildren();
+                UsersDOM.appendChild(b);
+            });
+    },
+    Chat: async () => {
+        await request
+            .get(`/chat/${lastUpdated}`)
+            .then(res => res.json())
+            .then(res => {
+                const logs = res.logs;
+                for (const log of logs) {
+                    if (log.user == -1) {
+                        let li = document.createElement("li");
+                        let b = document.createElement("b");
+                        b.textContent = "server: ";
+                        li.appendChild(b);
+                        li.append(log.msg);
+                        ChatDOM.appendChild(li);
+                        continue;
+                    }
+
+                    request.get(`/usr/${log.user}`)
+                        .then(r => r.json())
+                        .then(r => {
+                            let li = document.createElement("li");
+                            let b = document.createElement("b");
+                            b.textContent = `${r.name}: `;
+                            li.appendChild(b);
+                            li.append(log.msg);
+                            ChatDOM.appendChild(li);
+                        });
+                }
+                lastUpdated += logs.length;
+            })
+            .catch(_ => {
                 let li = document.createElement("li");
-                if (myId == data.id) {
-                    let b = document.createElement("b");
-                    b.textContent = data.name;
-                    li.appendChild(b);
-                }
-                else {
-                    li.textContent = data.name;
-                }
-                usrsDOM.appendChild(li);
-            }
-        })
-        .catch(_ => {
-            let b = document.createElement("b")
-            b.textContent = "couldn't fetch users";
-            usrsDOM.replaceChildren();
-            usrsDOM.appendChild(b);
-        });
+                let b = document.createElement("b");
+                b.textContent = "couldn't fetch chats";
+                li.appendChild(b);
+                ChatDOM.replaceChildren();
+                ChatDOM.appendChild(li)
+            });
+    },
+    All: async () => {
+        await Updator.Self();
+        await Updator.UserList();
+        await Updator.Chat();
+    }
+};
 
-    await request.put(`/usr/${mySession}`);
-}
-
-async function UpdateGame() {
+(async function () {
+    const myName = prompt("What's your name?", "Harry Potter");
     await request
-        .get(`/game/${lastUpdated}`)
-        .then(res => res.json())
-        .then(res => {
-            // TODO: update game
-        })
-}
-
-// TODO: input word
-
-const loopID = setInterval(UpdateUserList, 500);
+        .post("/usr", { "name": myName })
+        .then(data => data.json())
+        .then(data => {
+            mySession = data.session;
+            myId = data.id;
+            console.log(`session: ${mySession}, id: ${myId}`)
+        });
+})().then(_ => {
+    setInterval(Updator.All, 500);
+});

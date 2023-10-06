@@ -23,8 +23,8 @@ import chat
 
 if __name__ == "__main__":
     conf = Config()
-    conf.bind = ["127.0.0.1:8000"]
+    conf.bind = ["127.0.0.1:80"]
     conf.include_server_header = False
-    conf.accesslog = "-"
+    #conf.accesslog = "-"
     conf.loglevel = "DEBUG"
     asyncio.run(serve(app, conf))

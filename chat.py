@@ -58,3 +58,7 @@ async def post_chat(chat: Chat, response: Response):
 
 def announce(msg: str) -> None:
     room.append(Log(-1, msg))
+
+### ENTRY ###
+
+user.announce = announce
